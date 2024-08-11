@@ -1,0 +1,44 @@
+{
+    "name": "SensorCurrent",
+    "version": "1.0.0",
+    "description": "Facilite l'utilisation des capteurs de courant",
+    "keywords": "ASC712, YHDC, SCT, Sensor, Current, Capteur, Courant, Intensite",
+    "repository":
+    {
+      "type": "git",
+      "url": "https://github.com/boby15000/SensorCurrent.git"
+    },
+    "authors":
+    [
+      {
+        "name": "Nicolas Fourgheon",
+        "email": "boby15000@hotmail.com",
+        "maintainer": true
+      }
+    ],
+    "examples": [
+    {
+        "name": "Simple",
+        "base": "examples/",
+        "files": ["simple.cpp"]
+    },
+    {
+        "name": "twoSensorCurrent",
+        "base": "examples/",
+        "files": ["twoSensorCurrent.cpp"]
+    }
+    ],
+    "license": "MIT",
+    "homepage": "",
+    "frameworks": "*",
+    "platforms": "*",
+    "export": {
+      "exclude": [
+        "src/main.cpp",
+        ".*",
+        "/.*",
+        "platformio.ini",
+        "/test"
+      ]
+    }
+  }
