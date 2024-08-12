@@ -16,20 +16,23 @@
         "maintainer": true
       }
     ],
+    "dependencies":
+    {
+        "boby15000/Tempo@^1.0.0": "^1.0.0"
+    },
     "examples": [
     {
         "name": "Simple",
-        "base": "examples/",
+        "base": "exemples/",
         "files": ["simple.cpp"]
     },
     {
         "name": "twoSensorCurrent",
-        "base": "examples/",
+        "base": "exemples/",
         "files": ["twoSensorCurrent.cpp"]
     }
     ],
     "license": "MIT",
-    "homepage": "",
     "frameworks": "*",
     "platforms": "*",
     "export": {

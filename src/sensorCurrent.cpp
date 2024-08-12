@@ -2,13 +2,13 @@
 #include "sensorCurrent.h"
 #endif
 
-#include <simpleMinuteur.h>
+#include <Tempo.h>
 
 const byte UNITE_VOLT = 1 ;
 const byte UNITE_AMPERE = 2 ;
 const int TENSION_MAX_ADC = 1024; 
 
-simpleMinuteur minuteur(20);
+Tempo minuteur(1);
 
 int valueADC;
 
@@ -24,7 +24,8 @@ sensorCurrent::sensorCurrent(byte pin_sensor, float sensibilite, byte unite_sens
    this->_PinSensor = pin_sensor;
    this->_Sensibilite= sensibilite;
    this->_UniteSensibilite = unite_sensibilite;
-   this->_Echantillonnage = (1/max(frequence, 50))*1000;
+   long Echantillonnage = (1/max(frequence, 50))*1000;
+   minuteur.SetSeuil(0,Echantillonnage);
    this->_Tension = tension;
    this->_TensionRef = TENSION_MAX_ADC/2;
 }
@@ -65,7 +66,7 @@ float sensorCurrent::GetCourantCrete(){
     default:
         return (tensionCaptADC)*(this->_Sensibilite*5/TENSION_MAX_ADC)*this->FacteurDeCorrection;
         break;
-    }   
+    }
 }
 
 /**
@@ -91,8 +92,8 @@ float sensorCurrent::GetPuissance(){
 int sensorCurrent::ReadingSensor(){
     int valeur = 0;
     int valeurMax = 0;
-    minuteur.demarrer(this->_Echantillonnage);
-    while ( !minuteur.estTermine() ){
+    minuteur.SetActif(0,true);
+    while ( !minuteur.GetEnd(0) ){
         valeur = analogRead( this->_PinSensor );
         valeurMax = max(valeurMax , valeur);
     }
