@@ -11,26 +11,31 @@
 class sensorCurrent
 {
   public :
-    // contructeur
-    sensorCurrent(byte pin_sensor, float sensibilite, byte unite_sensibilite, float frequence = 50, float tension = 230.0);
+    static const byte MILLIVOLT_PAR_AMPERE = 1 ;
+    static const byte AMPERE_PAR_VOLT = 0 ;
+    const int TENSION_MAX_ADC = 1024; 
 
-    float FacteurDeCorrection = 1.0;
-    int FacteurDeSensibilite = 3;
-    int GetADC();
+    sensorCurrent(byte pin_sensor, double sensibilite_Capt, byte type_sensibilite, double frequence = 50, double tension = 230.0);
+
+    int GetADC(bool filtrage = false);
     void Etalonnage();
-    float GetCourantCrete();
-    float GetCourantEff();
-    float GetPuissance();
+    void FacteurDeCorrectionDuZero(byte value);
+    void FacteurDeCorrectionACharge(double value);
+    double GetCourantCrete();
+    double GetCourantEff();
+    double GetPuissance();
 
   private :
     byte _PinSensor;
-    float _Sensibilite;
-    byte _UniteSensibilite;
-    int _Echantillonnage;
-    float _Tension;
+    double _Sensibilite;
+    byte _type_sensibilite;
+    double _Tension;
     int _TensionRef;
+    int _FacteurDeStabilisation = 5;
+    int _FacteurDeCorrectionDuZero = 0;
+    double _FacteurDeCorrectionACharge = 1.0;
 
-    int ReadingSensor();
+    int ReadingSensorAC();
 };
 
 #endif

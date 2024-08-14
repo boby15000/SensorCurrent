@@ -5,10 +5,13 @@
 byte PIN_CAPTEUR_COURANT = A0;
 byte SENSIBILITE_CAPT_ASC = 100;
 
-sensorCurrent ACS712(PIN_CAPTEUR_COURANT, SENSIBILITE_CAPT_ASC, 1); 
+sensorCurrent ACS712(PIN_CAPTEUR_COURANT, SENSIBILITE_CAPT_ASC, ACS712.MILLIVOLT_PAR_AMPERE); 
 
 void setup() {
   Serial.begin(9600);
+  ACS712.Etalonnage(); // Permet d'étalonner le Zéro du capteur.
+  //ACS712.FacteurDeCorrectionDuZero(4); A utiliser pour corriger le Zéro du capteur. Utiliser la fonction ACS712.GetADC(true) pour obtenir la valeur de correction à utiliser. Par défaut 0
+  //ACS712.FacteurDeCorrectionACharge(1.85); A utiliser pour corriger l'intensité lu par le capteur. Par défaut 1 ; intensité lu x 1
 }
 
 void loop() {
