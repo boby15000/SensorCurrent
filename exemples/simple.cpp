@@ -17,7 +17,7 @@ void setup() {
 void loop() {
 
   Serial.print("ADC Value : ");
-  Serial.println(ACS712.GetADC());
+  Serial.println(ACS712.GetCourantADC());
   Serial.print("Courant Max : ");
   Serial.print(ACS712.GetCourantCrete());
   Serial.println("A");

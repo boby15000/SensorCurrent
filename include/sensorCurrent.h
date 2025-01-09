@@ -17,10 +17,10 @@ class sensorCurrent
 
     sensorCurrent(byte pin_sensor, double sensibilite_Capt, byte type_sensibilite, double frequence = 50, double tension = 230.0);
 
-    int GetADC(bool filtrage = false);
     void Etalonnage();
     void FacteurDeCorrectionDuZero(byte value);
     void FacteurDeCorrectionACharge(double value);
+    int GetCourantADC(bool filtrage = false);
     double GetCourantCrete();
     double GetCourantEff();
     double GetPuissance();

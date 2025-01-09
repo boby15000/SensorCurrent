@@ -62,7 +62,7 @@ void sensorCurrent::FacteurDeCorrectionACharge(double value){
  * Void
  * Retourne la valeur de l'entrée analogique du capteur de courant (sans filtrage par défaut)
 */
-int sensorCurrent::GetADC(bool filtrage){
+int sensorCurrent::GetCourantADC(bool filtrage){
     int valueTension = this->ReadingSensorAC();
     if ( filtrage ) return abs(valueTension-this->_TensionRef) ;
     return valueTension;
@@ -74,7 +74,7 @@ int sensorCurrent::GetADC(bool filtrage){
  * Nota : Prend en compte le Facteur de Sensibilité pour ajuster le Zéro à vide et le Facteur de Correction par ajuster l'intensité en charge.
 */
 double sensorCurrent::GetCourantCrete(){
-    int tensionCaptADC = this->GetADC(true);
+    int tensionCaptADC = this->GetCourantADC(true);
     if ( this->_type_sensibilite == this->MILLIVOLT_PAR_AMPERE )
     {
         return ((float(tensionCaptADC) * 5 / float(this->TENSION_MAX_ADC)) /   float(this->_Sensibilite/1000) * float(this->_FacteurDeCorrectionACharge)); /* Sensibilité en Millivolt par Ampère */
