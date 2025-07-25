@@ -41,6 +41,7 @@ void sensorCurrent::CalibrationZero(){
 
 
 /**
+<<<<<<< HEAD
  * @brief Permet de corriger l'intensité mesuré
  * @param facteur utilisé pour corriger l'intensité mesurée (par défaut 1).
  * @details Un facteur de 1 signifie qu’aucune correction n’est appliquée à l’intensité mesurée.
@@ -51,6 +52,33 @@ void sensorCurrent::Set_FacteurDeCorrection(double facteur){
   this->_FacteurDeCorrection = constrain(facteur, FACTEUR_MINI, FACTEUR_MAX);
 }
 
+=======
+ * Void
+ * Retourne la valeur de l'entrée analogique du capteur de courant (sans filtrage par défaut)
+*/
+int sensorCurrent::GetCourantADC(bool filtrage){
+    int valueTension = this->ReadingSensorAC();
+    if ( filtrage ) return abs(valueTension-this->_TensionRef) ;
+    return valueTension;
+}
+
+/**
+ * Function
+ * Return : la valeur Crete du Courant
+ * Nota : Prend en compte le Facteur de Sensibilité pour ajuster le Zéro à vide et le Facteur de Correction par ajuster l'intensité en charge.
+*/
+double sensorCurrent::GetCourantCrete(){
+    int tensionCaptADC = this->GetCourantADC(true);
+    if ( this->_type_sensibilite == this->MILLIVOLT_PAR_AMPERE )
+    {
+        return ((float(tensionCaptADC) * 5 / float(this->TENSION_MAX_ADC)) /   float(this->_Sensibilite/1000) * float(this->_FacteurDeCorrectionACharge)); /* Sensibilité en Millivolt par Ampère */
+    }
+    else
+    {
+        return ((float(tensionCaptADC) * 5 / float(this->TENSION_MAX_ADC)) * float(this->_Sensibilite) * this->_FacteurDeCorrectionACharge );  /* Sensibilité en Ampère par Volt */
+    }
+}
+>>>>>>> feaca14d695b8eb9e709b2ee6b75a88b0e464453
 
 /**
  * @brief Calcul la valeur Crête du Courant.
