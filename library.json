@@ -1,47 +1,50 @@
 {
-    "name": "SensorCurrent",
-    "version": "1.1.0",
-    "description": "Facilite l'utilisation des capteurs de courant de type ASC et SCT",
-    "keywords": "ASC712, YHDC, SCT, Sensor, Current, Capteur, Courant, Intensite",
-    "repository":
+  "name": "SensorCurrent",
+  "version": "2.0.0",
+  "description": "Mesure du courant alternatif (AC) avec les capteurs ACS712, SCT-013 et similaires : intensité crête, RMS, puissance apparente, filtrage et calibration.",
+  "keywords": [
+    "acs712",
+    "sct-013",
+    "capteur",
+    "current sensor",
+    "courant alternatif",
+    "ac current",
+    "rms",
+    "arduino",
+    "mesure courant",
+    "capteur intensité",
+    "puissance apparente"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/boby15000/SensorCurrent.git"
+  },
+  "authors": [
     {
-      "type": "git",
-      "url": "https://github.com/boby15000/SensorCurrent.git"
-    },
-    "authors":
-    [
-      {
-        "name": "Nicolas Fourgheon",
-        "email": "boby15000@hotmail.com",
-        "maintainer": true
-      }
-    ],
-    "dependencies":
-    {
-        "martinvichnal/AntiDelay": "^1.1.2"
-    },
-    "examples": [
-      {
-          "name": "Simple",
-          "base": "exemples/",
-          "files": ["simple.cpp"]
-      },
-      {
-          "name": "twoSensorCurrent",
-          "base": "exemples/",
-          "files": ["twoSensorCurrent.cpp"]
-      }
-    ],
-    "license": "MIT",
-    "frameworks": "*",
-    "platforms": "*",
-    "export": {
-      "exclude": [
-        "src/main.cpp",
-        ".*",
-        "/.*",
-        "platformio.ini",
-        "/test"
-      ]
+      "name": "Nicolas Fourgheon",
+      "email": "boby15000@hotmail.com",
+      "maintainer": true
     }
-  }
+  ],
+  "examples": [
+    {
+      "name": "Mesure Courant Simple",
+      "base": "examples/",
+      "files": ["mesureCurrent.cpp"]
+    }
+  ],
+  "license": "MIT",
+  "frameworks": ["arduino"],
+  "platforms": ["atmelavr", "espressif8266", "espressif32"],
+  "export": {
+    "exclude": [
+      "src/main.cpp",
+      ".*",
+      "/.*",
+      "platformio.ini",
+      "/test"
+    ]
+  },
+  "homepage": "https://github.com/boby15000/SensorCurrent",
+  "issues": "https://github.com/boby15000/SensorCurrent/issues"
+}

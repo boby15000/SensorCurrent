@@ -1,119 +1,126 @@
-#ifndef sensorCurrent_h
+/**
+ * @file sensorCurrent.cpp
+ * @author Nicolas Fourgheon
+ * @page https://github.com/boby15000/SensorCurrent
+ * @brief sensorCurrent est une bibliothèque qui vise à mesurer l'intensité du courant via différent capteur.
+ * @version v2.0.0
+ * @date 2024-08-11
+ */
+
 #include "sensorCurrent.h"
-#endif
-
-#include <AntiDelay.h>
-
-AntiDelay Minuteur(50);
-AntiDelay Minuteur2(20);
-
-int valueADC;
+#include <Arduino.h>
 
 /**
- * Constructeur
- * @pin_sensor : entrée analogique du capteur
- * @sensibilite : sensibilité du capteur
- * @type_sensibilite : Type de la sensibilité AMPERE_PAR_VOLT ou MILLIVOLT_PAR_AMPERE
- * @frequence : fréquence du réseau mesuré (par défaut 50hz)
- * @tension : tension du réseau mesuré (par défaut 230V)
-*/
-sensorCurrent::sensorCurrent(byte pin_sensor, double sensibilite_Capt, byte type_sensibilite, double frequence, double tension){
-    this->_PinSensor = pin_sensor;
-    this->_Sensibilite = sensibilite_Capt;
-    this->_type_sensibilite = type_sensibilite;
-    long Echantillonnage = abs((1/max(frequence, 50))*1000);
-    Minuteur2.setInterval(Echantillonnage);
-    this->_Tension = tension;
-    this->_TensionRef = TENSION_MAX_ADC/2;
+ * @brief Initialise les paramètres du cpateur de courant.
+ * @param pin_Capt Pin du capteur de courant.
+ * @param sensibilite_Capt Sensibilité du capteur de courant en mV/A (ex SCT-013 : 100mV/A).
+ * @param tensionAlim Tension d'alimentation du cpateur, par défaut 5,0V.
+ * @param frequence Fréquence du réseau, par défaut 50hz.
+ */
+sensorCurrent::sensorCurrent(uint8_t pin_Capt, double sensibilite_Capt, double tensionAlim, double frequence){
+    this->_PinSensor = pin_Capt;
+    this->_sensibilite_Capt = sensibilite_Capt;
+    this->_tensionAlimMilliVolt = tensionAlim*1000; // tension d'alimention en MilliVolt.
+    this->_tensionAlimADC = round(tensionAlim*RESOLUTION_ADC)/TENSION_ALIM; // calcul la tension d'alimention en ADC (par défaut 5V soit 1023).
+    this->_tensionMoyenneADC = round(this->_tensionAlimADC/2); // calcul la tension moyenne en ADC (par défaut 2.5V soit 512).
+    this->_TpsDeMesure = (1000000.0 / max(frequence, FREQUENCE_RESEAU))*2; // Conversion en µs de la période x 2 , pour deux périodes (réseau minimum 50Hz).    
 }
 
-/**
- * Void
- * Etalonnage du zéro courant : A FAIRE HORS CHARGE
-*/
-void sensorCurrent::Etalonnage(){
-    int valeur = 0;
-    int valeurMax = 0;
-    Minuteur.reset();
-    while ( !Minuteur ){
-        valeur = analogRead( this->_PinSensor );
-        valeurMax = max(valeurMax , valeur);
-    }
-    this->_TensionRef = valeurMax;
-}
 
 /**
- * Void
- * Modifie le facteur de Sensibilité
-*/
-void sensorCurrent::FacteurDeCorrectionDuZero(byte value){
-    this->_FacteurDeCorrectionDuZero = max(value, 0);
+ * @brief Effectue le calibrage du zéro.
+ * @attention Cette fonction doit être appelée lorsque aucun courant ne circule, afin de calibrer le zéro (préférence dans le setup).
+ */
+void sensorCurrent::CalibrationZero(){
+  long somme = 0;
+  for (int i = 0; i < NBR_ECHANTILLON ; i++) {
+    somme += analogRead(this->_PinSensor);
+  }
+  this->_tensionMoyenneADC = round(somme / NBR_ECHANTILLON);
 }
 
-/**
- * Void
- * Modifie le facteur de Correction
-*/
-void sensorCurrent::FacteurDeCorrectionACharge(double value){
-    this->_FacteurDeCorrectionACharge = max(value, 1);
-}
 
 /**
- * Void
- * Retourne la valeur de l'entrée analogique du capteur de courant (sans filtrage par défaut)
-*/
-int sensorCurrent::GetADC(bool filtrage){
-    int valueTension = this->ReadingSensorAC();
-    if ( filtrage ) return abs(valueTension-this->_TensionRef) ;
-    return valueTension;
+ * @brief Permet de corriger l'intensité mesuré
+ * @param facteur utilisé pour corriger l'intensité mesurée (par défaut 1).
+ * @details Un facteur de 1 signifie qu’aucune correction n’est appliquée à l’intensité mesurée.
+ * @details Plage pour la valeur de Facteur : 0.1 à 3.0.
+ * @details facteur = Valeur "Métrix" / Valeur Mesuré
+ */
+void sensorCurrent::Set_FacteurDeCorrection(double facteur){
+  this->_FacteurDeCorrection = constrain(facteur, FACTEUR_MINI, FACTEUR_MAX);
 }
 
-/**
- * Function
- * Return : la valeur Crete du Courant
- * Nota : Prend en compte le Facteur de Sensibilité pour ajuster le Zéro à vide et le Facteur de Correction par ajuster l'intensité en charge.
-*/
-double sensorCurrent::GetCourantCrete(){
-    int tensionCaptADC = this->GetADC(true);
-    if ( this->_type_sensibilite == this->MILLIVOLT_PAR_AMPERE )
-    {
-        return ((float(tensionCaptADC) * 5 / float(this->TENSION_MAX_ADC)) /   float(this->_Sensibilite/1000) * float(this->_FacteurDeCorrectionACharge)); /* Sensibilité en Millivolt par Ampère */
-    }
-    else
-    {
-        return ((float(tensionCaptADC) * 5 / float(this->TENSION_MAX_ADC)) * float(this->_Sensibilite) * this->_FacteurDeCorrectionACharge );  /* Sensibilité en Ampère par Volt */
-    }
-}
 
 /**
- * Function
- * Return : la valeur Efficace du Courant
-*/
-double sensorCurrent::GetCourantEff(){
-    return this->GetCourantCrete()/sqrt(2);
+ * @brief Calcul la valeur Crête du Courant.
+ * @return la valeur Crête du courant.
+ */
+double sensorCurrent::GetCourantCrete(bool FacteurDeCorrection){
+  unsigned long start = micros();
+  double maxCurrent = 0.0;
+
+  while (micros() - start < this->_TpsDeMesure) {
+    int adc = this->moyenneGlissante(abs(analogRead(this->_PinSensor)-this->_tensionMoyenneADC));
+    double milliVolt = round(((double)adc * this->_tensionAlimMilliVolt) / (double)this->_tensionAlimADC);
+    double current = round(milliVolt / this->_sensibilite_Capt);
+    if (abs(current) > maxCurrent) maxCurrent = current;
+  }
+  //double currentMoyenne = this->moyenneGlissante(maxCurrent);
+  return (FacteurDeCorrection) ? maxCurrent * this->_FacteurDeCorrection : maxCurrent ;
 }
 
-/**
- * Function
- * Return : puissance consommé
-*/
-double sensorCurrent::GetPuissance(){
-    return (this->GetCourantEff() * this->_Tension);
-}
 
 /**
- * Function
- * Return : la valeur numérique du Courant
-*/
-int sensorCurrent::ReadingSensorAC(){
-    int valeur = 0;
-    int valeurMax = 0;
-    Minuteur2.reset();
-    while ( !Minuteur2 ){
-        valeur = analogRead( this->_PinSensor );
-        valeurMax = max(valeurMax , valeur);
-    }
-    if ( abs(valeurMax - valueADC) > this->_FacteurDeStabilisation ) valueADC = valeurMax ;
-    if ( valueADC <= (this->_TensionRef+this->_FacteurDeCorrectionDuZero) ) valueADC = this->_TensionRef;
-    return valueADC;
+ * @brief Calcul la valeur Efficace du Courant.
+ * @return la valeur Efficace du courant.
+ */
+double sensorCurrent::GetCourantEff(bool FacteurDeCorrection){
+  unsigned long start = micros();
+  double sumSq = 0.0;
+  int count = 0;
+
+  while (micros() - start < this->_TpsDeMesure) {
+    int adc = this->moyenneGlissante(abs(analogRead(this->_PinSensor)-this->_tensionMoyenneADC));
+    double milliVolt = round(((double)adc * this->_tensionAlimMilliVolt) / (double)this->_tensionAlimADC);
+    double current = round(milliVolt / this->_sensibilite_Capt);
+    sumSq += sq(current);
+    count++;
+  }
+  double meanSq = sumSq / count;
+  //double currentMoyenne = this->moyenneGlissante(sqrt(meanSq));
+  return (FacteurDeCorrection) ? sqrt(meanSq) * this->_FacteurDeCorrection : sqrt(meanSq) ;
+}
+
+
+/**
+ * @brief Calcul la puissance apparente.
+ * @return la puissance apparente (VA).
+ * @details la puissance est calculé depuis l'intensité efficace avec le facteur de correction.
+ */
+double sensorCurrent::GetPuissanceApparente(int tension){
+    return (double)tension * this->GetCourantEff();
+}
+
+
+/**
+ * @brief Filtrage numérique au capteur de courant pour stabiliser la lecture et améliorer la précision, notamment en atténuant les pics aléatoires dus au bruit de mesure.
+ * @return une valeur ADC Filtré.
+ */
+int sensorCurrent::moyenneGlissante(int nouvelleValeur) {
+  _bufferADC[_indexBuffer++] = nouvelleValeur;
+
+  if (_indexBuffer >= N_MOYENNE) {
+    _indexBuffer = 0;
+    _bufferRempli = true;
+  }
+
+  int somme = 0;
+  int taille = _bufferRempli ? N_MOYENNE : _indexBuffer;
+
+  for (int i = 0; i < taille; i++) {
+    somme += _bufferADC[i];
+  }
+
+  return somme / taille;
 }
