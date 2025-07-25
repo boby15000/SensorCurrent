@@ -127,7 +127,7 @@ Un facteur de 1.0 signifie qu’aucune correction n’est appliquée.
 La valeur du facteur doit être comprise entre 0.1 et 3.0.
 Le facteur doit être déterminé en comparant la mesure réelle (référence) à celle fournie par le capteur :
 
-![Formule](https://latex.codecogs.com/png.image?\large&space;\dpi{110}{\color{Blue}\textbf{facteur}=\frac{Valeur\:reference}{Valeur\:mesuree})
+![Formule](https://latex.codecogs.com/png.image?\large&space;\dpi{110}{\color{Green}\textbf{facteur}=\frac{Valeur\:reference}{Valeur\:mesuree})
 
 ---
 
