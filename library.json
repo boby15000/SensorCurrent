@@ -4,7 +4,7 @@
   "description": "Mesure du courant alternatif (AC) avec les capteurs ACS712, SCT-013 et similaires : intensité crête, RMS, puissance apparente, filtrage et calibration.",
   "keywords": [
     "acs712",
-    "sct-013",
+    "sct013",
     "capteur",
     "current sensor",
     "courant alternatif",
@@ -12,7 +12,7 @@
     "rms",
     "arduino",
     "mesure courant",
-    "capteur intensité",
+    "capteur intensite",
     "puissance apparente"
   ],
   "repository": {
