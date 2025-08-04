@@ -1,6 +1,6 @@
 {
   "name": "SensorCurrent",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Mesure du courant alternatif (AC) avec les capteurs ACS712, SCT-013 et similaires : intensité crête, RMS, puissance apparente, filtrage et calibration.",
   "keywords": [
     "acs712",
@@ -29,7 +29,7 @@
   "examples": [
     {
       "name": "Mesure Courant Simple",
-      "base": "examples/",
+      "base": "examples/mesureCurrent/",
       "files": ["mesureCurrent.cpp"]
     }
   ],
@@ -42,7 +42,9 @@
       ".*",
       "/.*",
       "platformio.ini",
-      "/test"
+      "/test",
+      "/include",
+      "/lib"
     ]
   },
   "homepage": "https://github.com/boby15000/SensorCurrent",

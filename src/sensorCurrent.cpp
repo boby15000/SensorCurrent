@@ -2,8 +2,8 @@
  * @file sensorCurrent.cpp
  * @author Nicolas Fourgheon
  * @page https://github.com/boby15000/SensorCurrent
- * @brief sensorCurrent est une bibliothèque qui vise à mesurer l'intensité du courant via différent capteur.
- * @version v2.0.0
+ * @brief Bibliothèque pour mesurer l'intensité du courant via différents capteurs (ACS712, SCT-013, etc...).
+ * @version v2.1.0
  * @date 2024-08-11
  */
 
@@ -23,7 +23,7 @@ sensorCurrent::sensorCurrent(uint8_t pin_Capt, double sensibilite_Capt, double t
     this->_tensionAlimMilliVolt = tensionAlim*1000; // tension d'alimention en MilliVolt.
     this->_tensionAlimADC = round(tensionAlim*RESOLUTION_ADC)/TENSION_ALIM; // calcul la tension d'alimention en ADC (par défaut 5V soit 1023).
     this->_tensionMoyenneADC = round(this->_tensionAlimADC/2); // calcul la tension moyenne en ADC (par défaut 2.5V soit 512).
-    this->_TpsDeMesure = (1000000.0 / max(frequence, FREQUENCE_RESEAU))*2; // Conversion en µs de la période x 2 , pour deux périodes (réseau minimum 50Hz).    
+    this->_TpsDeMesure = (1000000.0 / max(frequence, FREQUENCE_RESEAU))*2; // Conversion en µs de la période x 2 , pour deux périodes (réseau minimum 50Hz).  
 }
 
 
@@ -41,7 +41,6 @@ void sensorCurrent::CalibrationZero(){
 
 
 /**
-<<<<<<< HEAD
  * @brief Permet de corriger l'intensité mesuré
  * @param facteur utilisé pour corriger l'intensité mesurée (par défaut 1).
  * @details Un facteur de 1 signifie qu’aucune correction n’est appliquée à l’intensité mesurée.
@@ -52,33 +51,6 @@ void sensorCurrent::Set_FacteurDeCorrection(double facteur){
   this->_FacteurDeCorrection = constrain(facteur, FACTEUR_MINI, FACTEUR_MAX);
 }
 
-=======
- * Void
- * Retourne la valeur de l'entrée analogique du capteur de courant (sans filtrage par défaut)
-*/
-int sensorCurrent::GetCourantADC(bool filtrage){
-    int valueTension = this->ReadingSensorAC();
-    if ( filtrage ) return abs(valueTension-this->_TensionRef) ;
-    return valueTension;
-}
-
-/**
- * Function
- * Return : la valeur Crete du Courant
- * Nota : Prend en compte le Facteur de Sensibilité pour ajuster le Zéro à vide et le Facteur de Correction par ajuster l'intensité en charge.
-*/
-double sensorCurrent::GetCourantCrete(){
-    int tensionCaptADC = this->GetCourantADC(true);
-    if ( this->_type_sensibilite == this->MILLIVOLT_PAR_AMPERE )
-    {
-        return ((float(tensionCaptADC) * 5 / float(this->TENSION_MAX_ADC)) /   float(this->_Sensibilite/1000) * float(this->_FacteurDeCorrectionACharge)); /* Sensibilité en Millivolt par Ampère */
-    }
-    else
-    {
-        return ((float(tensionCaptADC) * 5 / float(this->TENSION_MAX_ADC)) * float(this->_Sensibilite) * this->_FacteurDeCorrectionACharge );  /* Sensibilité en Ampère par Volt */
-    }
-}
->>>>>>> feaca14d695b8eb9e709b2ee6b75a88b0e464453
 
 /**
  * @brief Calcul la valeur Crête du Courant.
@@ -90,11 +62,11 @@ double sensorCurrent::GetCourantCrete(bool FacteurDeCorrection){
 
   while (micros() - start < this->_TpsDeMesure) {
     int adc = this->moyenneGlissante(abs(analogRead(this->_PinSensor)-this->_tensionMoyenneADC));
-    double milliVolt = round(((double)adc * this->_tensionAlimMilliVolt) / (double)this->_tensionAlimADC);
-    double current = round(milliVolt / this->_sensibilite_Capt);
-    if (abs(current) > maxCurrent) maxCurrent = current;
+    double milliVolt = (((double)adc * this->_tensionAlimMilliVolt) / (double)this->_tensionAlimADC);
+    double current = (milliVolt / this->_sensibilite_Capt);
+    maxCurrent = max(current, maxCurrent);
   }
-  //double currentMoyenne = this->moyenneGlissante(maxCurrent);
+  maxCurrent = (maxCurrent >= (IntensiteMin*sq(2))) ? maxCurrent : 0.0;
   return (FacteurDeCorrection) ? maxCurrent * this->_FacteurDeCorrection : maxCurrent ;
 }
 
@@ -110,14 +82,14 @@ double sensorCurrent::GetCourantEff(bool FacteurDeCorrection){
 
   while (micros() - start < this->_TpsDeMesure) {
     int adc = this->moyenneGlissante(abs(analogRead(this->_PinSensor)-this->_tensionMoyenneADC));
-    double milliVolt = round(((double)adc * this->_tensionAlimMilliVolt) / (double)this->_tensionAlimADC);
-    double current = round(milliVolt / this->_sensibilite_Capt);
+    double milliVolt = (((double)adc * this->_tensionAlimMilliVolt) / (double)this->_tensionAlimADC);
+    double current = (milliVolt / this->_sensibilite_Capt);
     sumSq += sq(current);
     count++;
   }
   double meanSq = sumSq / count;
-  //double currentMoyenne = this->moyenneGlissante(sqrt(meanSq));
-  return (FacteurDeCorrection) ? sqrt(meanSq) * this->_FacteurDeCorrection : sqrt(meanSq) ;
+  double Current = (sqrt(meanSq) >= IntensiteMin) ? sqrt(meanSq) : 0.0;
+  return (FacteurDeCorrection) ? Current * this->_FacteurDeCorrection : Current ; 
 }
 
 
@@ -129,6 +101,38 @@ double sensorCurrent::GetCourantEff(bool FacteurDeCorrection){
 double sensorCurrent::GetPuissanceApparente(int tension){
     return (double)tension * this->GetCourantEff();
 }
+
+
+/**
+ * @brief Calcule le facteur de sensibilité du capteur (ex : SCT-0013 0XX)
+ * @param intensiteMesure Intensité réelle de l'équipement mesuré par Pinceampéremètrique ou Metrix.
+ * @param tensionCalcule Tension récupérer par la fonction "GetCourantToVolt" lorsque l'appareil est en charge équivalent à l'Intensité réelle de l'équipement (variable ci-dessus)
+ * @return le facteur de sensibilité du capteur en MilliVolt 
+ */
+double  sensorCurrent::GetFacteurDeSensibilite(double intensiteMesure, double tensionCalcule){
+  return (tensionCalcule*1000)/intensiteMesure;
+}
+
+
+/**
+ * @brief Calcul la Tension image du Courant Efficace.
+ * @return la Tension en Volt.
+ */
+double sensorCurrent::GetCourantToVolt(){
+  unsigned long start = micros();
+  double sumSq = 0.0;
+  int count = 0;
+
+  while (micros() - start < this->_TpsDeMesure) {
+    int adc = this->moyenneGlissante(abs(analogRead(this->_PinSensor)-this->_tensionMoyenneADC));
+    double milliVolt = round(((double)adc * this->_tensionAlimMilliVolt) / (double)this->_tensionAlimADC);
+    sumSq += sq(milliVolt);
+    count++;
+  }
+  double meanSq = sumSq / count;
+  return sqrt(meanSq)/1000 ; 
+}
+
 
 
 /**

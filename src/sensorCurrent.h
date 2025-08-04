@@ -2,8 +2,8 @@
  * @file sensorCurrent.h
  * @author Nicolas Fourgheon
  * @page https://github.com/boby15000/SensorCurrent
- * @brief Bibliothèque pour mesurer l'intensité du courant via différents capteurs (ACS712, SCT-013, etc.).
- * @version v2.0.0
+ * @brief Bibliothèque pour mesurer l'intensité du courant via différents capteurs (ACS712, SCT-013, etc...).
+ * @version v2.1.0
  * @date 2024-08-11
  */
 
@@ -17,13 +17,15 @@
 #define FREQUENCE_RESEAU  50    // Tension alimentation du réseau par défaut.
 #define TENSION_RESEAU    230   // Tension alimentation du réseau par défaut.
 #define NBR_ECHANTILLON   500   // Nombre d'échantillons pour le calibrage du zéro.
-#define N_MOYENNE         10    // Nombre d'échantillons pour la moyenne glissante.
+#define N_MOYENNE         5     // Nombre d'échantillons pour la moyenne glissante.
 #define FACTEUR_MINI      0.1   // Valeur minimum pour le facteur de correction.
 #define FACTEUR_MAX       3.0   // Valeur maximum pour le facteur de correction.
 
 class sensorCurrent {
   public:
     
+  double IntensiteMin = 0.10; // Les valeurs (en ampère) en dessous du seuil d'intensité minimal ne sont pas prises en compte. Elles doivent être traitées comme des intensités de 0.0A.
+
     /**
      * @brief Initialise les paramètres du cpateur de courant.
      * @param pin_Capt Pin du capteur de courant.
@@ -65,9 +67,22 @@ class sensorCurrent {
     /**
      * @brief Calcul la puissance apparente.
      * @return la puissance apparente (VA).
-     * @details la puissance est calculé depuis l'intensité efficace avec le facteur de correction.
      */
     double GetPuissanceApparente(int tension);  // tension en Volts
+
+    /**
+     * @brief Calcule le facteur de sensibilité du capteur (ex : SCT-0013 0XX)
+     * @param intensiteMesure Intensité réelle de l'équipement mesuré par Pinceampéremètrique ou Metrix.
+     * @param tensionCalcule Tension récupérer par la fonction "GetCourantToVolt" lorsque l'appareil est en charge équivalent à l'Intensité réelle de l'équipement (variable ci-dessus)
+     * @return le facteur de sensibilité du capteur en MilliVolt  
+     */
+    double GetFacteurDeSensibilite(double intensiteMesure, double tensionCalcule);
+
+    /**
+     * @brief Calcul la Tension image du Courant Efficace.
+     * @return la Tension en Volt.
+     */
+    double GetCourantToVolt();
 
 
   private:
@@ -78,7 +93,7 @@ class sensorCurrent {
     int _tensionMoyenneADC ;            ///< Par défaut 1/2 de Vcc.
     int _tensionAlimADC ;               ///< La tension Vcc transmise "tensionAlim"
     unsigned long _TpsDeMesure;         ///< Temps de mesure en µs correspondant à deux périodes (dépendant de la fréquence).
-
+   
     int _bufferADC[N_MOYENNE] = {0};    ///< Buffer pour moyenne glissante.
     uint8_t _indexBuffer = 0;           ///< Index du buffer.
     bool _bufferRempli = false;         ///< Indique si le buffer est rempli (Si vrai, buffer rempli).
