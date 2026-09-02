@@ -1,6 +1,6 @@
 {
   "name": "SensorCurrent",
-  "version": "2.1.0",
+  "version": "4.1.0",
   "description": "Mesure du courant alternatif (AC) avec les capteurs ACS712, SCT-013 et similaires : intensité crête, RMS, puissance apparente, filtrage et calibration.",
   "keywords": [
     "acs712",
@@ -28,9 +28,14 @@
   ],
   "examples": [
     {
-      "name": "Mesure Courant Simple",
+      "name": "Mesure Courant SCT-013",
       "base": "examples/mesureCurrent/",
       "files": ["mesureCurrent.cpp"]
+    },
+    {
+      "name": "Mesure Courant ACS712",
+      "base": "examples/mesureCourantACS712/",
+      "files": ["mesureCourantACS712.cpp"]
     }
   ],
   "license": "MIT",
