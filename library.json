@@ -1,7 +1,7 @@
 {
   "name": "SensorCurrent",
   "version": "4.1.0",
-  "description": "Mesure du courant alternatif (AC) avec les capteurs ACS712, SCT-013 et similaires : intensité crête, RMS, puissance apparente, filtrage et calibration.",
+  "description": "Mesure du courant alternatif (AC) avec les capteurs ACS712, SCT-013 et similaires : intensité crête, RMS, puissance apparente, estimation de puissance active/réactive, filtrage et calibration.",
   "keywords": [
     "acs712",
     "sct013",
@@ -13,7 +13,9 @@
     "arduino",
     "mesure courant",
     "capteur intensite",
-    "puissance apparente"
+    "puissance apparente",
+    "puissance active",
+    "facteur puissance"
   ],
   "repository": {
     "type": "git",
