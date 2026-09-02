@@ -3,143 +3,121 @@
  * @author Nicolas Fourgheon
  * @page https://github.com/boby15000/SensorCurrent
  * @brief Bibliothèque pour mesurer l'intensité du courant via différents capteurs (ACS712, SCT-013, etc...).
- * @version v2.1.0
- * @date 2024-08-11
+ * @version v4.1.0
+ * @date 2026-09-02
  */
 
 #include "sensorCurrent.h"
 #include <Arduino.h>
 
 /**
- * @brief Initialise les paramètres du cpateur de courant.
- * @param pin_Capt Pin du capteur de courant.
- * @param sensibilite_Capt Sensibilité du capteur de courant en mV/A (ex SCT-013 : 100mV/A).
- * @param tensionAlim Tension d'alimentation du cpateur, par défaut 5,0V.
- * @param frequence Fréquence du réseau, par défaut 50hz.
+ * @brief Initialise les paramètres du capteur de courant.
  */
-sensorCurrent::sensorCurrent(uint8_t pin_Capt, double sensibilite_Capt, double tensionAlim, double frequence){
-    this->_PinSensor = pin_Capt;
-    this->_sensibilite_Capt = sensibilite_Capt;
-    this->_tensionAlimMilliVolt = tensionAlim*1000; // tension d'alimention en MilliVolt.
-    this->_tensionAlimADC = round(tensionAlim*RESOLUTION_ADC)/TENSION_ALIM; // calcul la tension d'alimention en ADC (par défaut 5V soit 1023).
-    this->_tensionMoyenneADC = round(this->_tensionAlimADC/2); // calcul la tension moyenne en ADC (par défaut 2.5V soit 512).
-    this->_TpsDeMesure = (1000000.0 / max(frequence, FREQUENCE_RESEAU))*2; // Conversion en µs de la période x 2 , pour deux périodes (réseau minimum 50Hz).  
+sensorCurrent::sensorCurrent(uint8_t pinCapteur, double sensibiliteCapteur, double frequence){
+    this->_pinCapteur = pinCapteur;
+    this->_sensibiliteCapteur = sensibiliteCapteur;
+    this->_tensionMoyenneADC = round(RESOLUTION_ADC / 2.0); // point milieu par défaut (Vcc/2).
+
+    double frequenceEffective = max(frequence, (double)FREQUENCE_RESEAU_DEFAUT); // réseau minimum 50Hz.
+    this->_dureeMesureMicros = (unsigned long)((1000000.0 / frequenceEffective) * NB_PERIODES_MESURE);
+    this->_dureeCalibrationMicros = (unsigned long)((1000000.0 / frequenceEffective) * NB_PERIODES_CALIBRATION);
 }
 
 
 /**
- * @brief Effectue le calibrage du zéro.
- * @attention Cette fonction doit être appelée lorsque aucun courant ne circule, afin de calibrer le zéro (préférence dans le setup).
+ * @brief Calibre le point milieu (zéro) du capteur.
  */
-void sensorCurrent::CalibrationZero(){
+void sensorCurrent::calibrerZero(){
+  unsigned long start = micros();
   long somme = 0;
-  for (int i = 0; i < NBR_ECHANTILLON ; i++) {
-    somme += analogRead(this->_PinSensor);
+  long nbEchantillons = 0;
+
+  while (micros() - start < this->_dureeCalibrationMicros) {
+    somme += analogRead(this->_pinCapteur);
+    nbEchantillons++;
   }
-  this->_tensionMoyenneADC = round(somme / NBR_ECHANTILLON);
+  this->_tensionMoyenneADC = round((double)somme / nbEchantillons);
 }
 
 
 /**
- * @brief Permet de corriger l'intensité mesuré
- * @param facteur utilisé pour corriger l'intensité mesurée (par défaut 1).
- * @details Un facteur de 1 signifie qu’aucune correction n’est appliquée à l’intensité mesurée.
- * @details Plage pour la valeur de Facteur : 0.1 à 3.0.
- * @details facteur = Valeur "Métrix" / Valeur Mesuré
+ * @brief Mesure simultanément le courant crête et efficace, en un seul passage d'échantillonnage.
  */
-void sensorCurrent::Set_FacteurDeCorrection(double facteur){
-  this->_FacteurDeCorrection = constrain(facteur, FACTEUR_MINI, FACTEUR_MAX);
-}
-
-
-/**
- * @brief Calcul la valeur Crête du Courant.
- * @return la valeur Crête du courant.
- */
-double sensorCurrent::GetCourantCrete(bool FacteurDeCorrection){
+sensorCurrent::MesureCourant sensorCurrent::lireCourant(){
   unsigned long start = micros();
-  double maxCurrent = 0.0;
+  int adcMax = 0;
+  unsigned long long sommeCarresADC = 0;
+  long nbEchantillons = 0;
 
-  while (micros() - start < this->_TpsDeMesure) {
-    int adc = this->moyenneGlissante(abs(analogRead(this->_PinSensor)-this->_tensionMoyenneADC));
-    double milliVolt = (((double)adc * this->_tensionAlimMilliVolt) / (double)this->_tensionAlimADC);
-    double current = (milliVolt / this->_sensibilite_Capt);
-    maxCurrent = max(current, maxCurrent);
+  // Tout se calcule en comptes ADC bruts (entiers, sans division) ; la conversion en Ampères
+  // ne s'applique qu'une seule fois à la fin, sur la crête et l'efficace déjà calculés.
+  while (micros() - start < this->_dureeMesureMicros) {
+    int adcFiltre = this->filtrerMoyenneGlissante(analogRead(this->_pinCapteur) - this->_tensionMoyenneADC);
+    int adcAbs = abs(adcFiltre);
+    adcMax = max(adcAbs, adcMax);
+    sommeCarresADC += (unsigned long long)adcAbs * adcAbs;
+    nbEchantillons++;
   }
-  maxCurrent = (maxCurrent >= (IntensiteMin*sq(2))) ? maxCurrent : 0.0;
-  return (FacteurDeCorrection) ? maxCurrent * this->_FacteurDeCorrection : maxCurrent ;
+
+  double facteurConversion = TENSION_REF_MILLIVOLT / (RESOLUTION_ADC * this->_sensibiliteCapteur); // A par compte ADC
+
+  MesureCourant mesure;
+  mesure.crete = adcMax * facteurConversion;
+  mesure.efficace = sqrt((double)sommeCarresADC / nbEchantillons) * facteurConversion;
+  return mesure;
 }
 
 
 /**
- * @brief Calcul la valeur Efficace du Courant.
- * @return la valeur Efficace du courant.
+ * @brief Mesure la valeur crête du courant.
  */
-double sensorCurrent::GetCourantEff(bool FacteurDeCorrection){
-  unsigned long start = micros();
-  double sumSq = 0.0;
-  int count = 0;
-
-  while (micros() - start < this->_TpsDeMesure) {
-    int adc = this->moyenneGlissante(abs(analogRead(this->_PinSensor)-this->_tensionMoyenneADC));
-    double milliVolt = (((double)adc * this->_tensionAlimMilliVolt) / (double)this->_tensionAlimADC);
-    double current = (milliVolt / this->_sensibilite_Capt);
-    sumSq += sq(current);
-    count++;
-  }
-  double meanSq = sumSq / count;
-  double Current = (sqrt(meanSq) >= IntensiteMin) ? sqrt(meanSq) : 0.0;
-  return (FacteurDeCorrection) ? Current * this->_FacteurDeCorrection : Current ; 
+double sensorCurrent::lireCourantCrete(){
+  return this->lireCourant().crete;
 }
 
 
 /**
- * @brief Calcul la puissance apparente.
- * @return la puissance apparente (VA).
- * @details la puissance est calculé depuis l'intensité efficace avec le facteur de correction.
+ * @brief Mesure la valeur efficace (RMS) du courant.
  */
-double sensorCurrent::GetPuissanceApparente(int tension){
-    return (double)tension * this->GetCourantEff();
+double sensorCurrent::lireCourantEfficace(){
+  return this->lireCourant().efficace;
 }
 
 
 /**
- * @brief Calcule le facteur de sensibilité du capteur (ex : SCT-0013 0XX)
- * @param intensiteMesure Intensité réelle de l'équipement mesuré par Pinceampéremètrique ou Metrix.
- * @param tensionCalcule Tension récupérer par la fonction "GetCourantToVolt" lorsque l'appareil est en charge équivalent à l'Intensité réelle de l'équipement (variable ci-dessus)
- * @return le facteur de sensibilité du capteur en MilliVolt 
+ * @brief Mesure la puissance apparente.
+ * @details S = tension x intensité efficace.
  */
-double  sensorCurrent::GetFacteurDeSensibilite(double intensiteMesure, double tensionCalcule){
-  return (tensionCalcule*1000)/intensiteMesure;
+double sensorCurrent::lirePuissanceApparente(double tension){
+  return tension * this->lireCourantEfficace();
 }
 
 
 /**
- * @brief Calcul la Tension image du Courant Efficace.
- * @return la Tension en Volt.
+ * @brief Estime la puissance active, à partir d'un facteur de puissance supposé.
+ * @details P = tension x intensité efficace x cos(phi). Approximation, pas une mesure.
  */
-double sensorCurrent::GetCourantToVolt(){
-  unsigned long start = micros();
-  double sumSq = 0.0;
-  int count = 0;
-
-  while (micros() - start < this->_TpsDeMesure) {
-    int adc = this->moyenneGlissante(abs(analogRead(this->_PinSensor)-this->_tensionMoyenneADC));
-    double milliVolt = round(((double)adc * this->_tensionAlimMilliVolt) / (double)this->_tensionAlimADC);
-    sumSq += sq(milliVolt);
-    count++;
-  }
-  double meanSq = sumSq / count;
-  return sqrt(meanSq)/1000 ; 
+double sensorCurrent::lirePuissanceActive(double tension, double facteurPuissance){
+  return tension * this->lireCourantEfficace() * facteurPuissance;
 }
 
 
+/**
+ * @brief Estime la puissance réactive, à partir du même facteur de puissance supposé.
+ * @details Q = tension x intensité efficace x sin(phi), avec sin(phi) déduit de cos(phi).
+ */
+double sensorCurrent::lirePuissanceReactive(double tension, double facteurPuissance){
+  double sinPhi = sqrt(max(0.0, 1.0 - sq(facteurPuissance)));
+  return tension * this->lireCourantEfficace() * sinPhi;
+}
+
 
 /**
- * @brief Filtrage numérique au capteur de courant pour stabiliser la lecture et améliorer la précision, notamment en atténuant les pics aléatoires dus au bruit de mesure.
- * @return une valeur ADC Filtré.
+ * @brief Filtrage numérique du capteur de courant pour stabiliser la lecture et améliorer la
+ *        précision, notamment en atténuant les pics aléatoires dus au bruit de mesure.
+ * @return une valeur ADC filtrée.
  */
-int sensorCurrent::moyenneGlissante(int nouvelleValeur) {
+int sensorCurrent::filtrerMoyenneGlissante(int nouvelleValeur) {
   _bufferADC[_indexBuffer++] = nouvelleValeur;
 
   if (_indexBuffer >= N_MOYENNE) {
