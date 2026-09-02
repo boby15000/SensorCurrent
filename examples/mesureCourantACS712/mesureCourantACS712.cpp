@@ -2,30 +2,29 @@
 #include <sensorCurrent.h>
 
 // DEFINITION DES PINS
-uint8_t PIN_CAPTEUR_COURANT_SCT = A1;
+uint8_t PIN_CAPTEUR_COURANT_ACS = A0;
 
-// DEFINITION SENSIBILITE DU CAPTEUR
-// SCT-013-010 : sortie 1V RMS pour 10A RMS (résistance de charge intégrée) => 1000mV / 10A = 100 mV/A
-double SENSIBILITE_CAPT = 100;
+// DEFINITION SENSIBILITE DES CAPTEURS (ex ACS712-20A : 100mV/A)
+double SENSIBILITE_CAPT_ACS = 100;
 
-sensorCurrent SCT013(PIN_CAPTEUR_COURANT_SCT, SENSIBILITE_CAPT);
+sensorCurrent ACS712(PIN_CAPTEUR_COURANT_ACS, SENSIBILITE_CAPT_ACS);
 
 void setup() {
   // Pour le Debug
   Serial.begin(9600);
 
   // Calibration du Capteur
-  SCT013.calibrerZero(); // A réaliser hors circulation de courant
+  ACS712.calibrerZero(); // A réaliser hors circulation de courant
 
   // Correction d'un écart systématique constaté par rapport à une référence (pince ampèremétrique) :
-  // ajuster directement SENSIBILITE_CAPT ci-dessus, plutôt qu'un facteur appliqué après coup.
-  // nouvelleSensibilite = SENSIBILITE_CAPT x (courantLuParLeCapteur / courantReel)
+  // ajuster directement SENSIBILITE_CAPT_ACS ci-dessus, plutôt qu'un facteur appliqué après coup.
+  // nouvelleSensibilite = SENSIBILITE_CAPT_ACS x (courantLuParLeCapteur / courantReel)
 }
 
 void loop() {
 
   // Une seule mesure combinée (crête + efficace) : deux fois plus rapide que deux appels séparés.
-  auto mesure = SCT013.lireCourant();
+  auto mesure = ACS712.lireCourant();
   double puissanceApparente = 220.0 * mesure.efficace;
 
   // ESTIMATION (pas une mesure) : suppose cos(phi) = FACTEUR_PUISSANCE_DEFAUT (0.93, profil
@@ -46,7 +45,6 @@ void loop() {
   Serial.print(puissanceActive);
   Serial.println(" W");
 
-  Serial.println("-----------------");
   Serial.println("-----------------");
 
   delay(2000);

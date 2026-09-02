@@ -3,49 +3,46 @@
 // DEFINITION DES PINS
 uint8_t PIN_CAPTEUR_COURANT_SCT = A1;
 
-// DEFINITION SENSIBILITE DES CAPTEURS
-double SENSIBILITE_CAPT = 120;
+// DEFINITION SENSIBILITE DU CAPTEUR
+// SCT-013-010 : sortie 1V RMS pour 10A RMS (résistance de charge intégrée) => 1000mV / 10A = 100 mV/A
+double SENSIBILITE_CAPT = 100;
 
 sensorCurrent SCT013(PIN_CAPTEUR_COURANT_SCT, SENSIBILITE_CAPT);
 
 void setup() {
   // Pour le Debug
   Serial.begin(9600);
-  
-  // Calibration du Capteur 
-  SCT013.CalibrationZero(); // A réaliser hors circulation de courant
 
-  // Définition du seuil de détection de courant (par défaut : 0.10 A)
-  // Toute valeur mesurée en dessous de ce seuil sera considérée comme nulle.
-  SCT013.IntensiteMin = 0.15;
+  // Calibration du Capteur
+  SCT013.calibrerZero(); // A réaliser hors circulation de courant
 
-  // Modification du Facteur de Correction (si besoin)
-  //SCT013.Set_FacteurDeCorrection(1.0); //valeur à corriger selon la formule : facteur = Valeur "Métrix" / Valeur Mesuré
+  // Correction d'un écart systématique constaté par rapport à une référence (pince ampèremétrique) :
+  // ajuster directement SENSIBILITE_CAPT ci-dessus, plutôt qu'un facteur appliqué après coup.
+  // nouvelleSensibilite = SENSIBILITE_CAPT x (courantLuParLeCapteur / courantReel)
 }
 
 void loop() {
-  
-/*
-  *** Détermination du facteur de sensibilité du capteur ***
-  - La sensibilité réelle d’un capteur peut légèrement différer des spécifications constructeur.
-  - Utiliser cette fonction lorsque le courant réel est connu (ex. mesuré avec un multimètre).
-  - Passer ce courant réel en paramètre (par exemple : 8.6 A) afin de calculer la sensibilité effective en mV/A.
-  - La valeur de tension mesurée est obtenue via la fonction GetCourantToVolt().
 
-  Exemple :
-  Serial.print("Facteur de sensibilité mesuré : ");
-  Serial.println(SCT013.GetFacteurDeSensibilite(8.6, SCT013.GetCourantToVolt()));
-*/
-  
+  // Une seule mesure combinée (crête + efficace) : deux fois plus rapide que deux appels séparés.
+  auto mesure = SCT013.lireCourant();
+  double puissanceApparente = 220.0 * mesure.efficace;
+
+  // ESTIMATION (pas une mesure) : suppose cos(phi) = FACTEUR_PUISSANCE_DEFAUT (0.93, profil
+  // résidentiel français). À ajuster si le cos(phi) réel de l'installation est connu.
+  double puissanceActive = puissanceApparente * FACTEUR_PUISSANCE_DEFAUT;
+
   // Affiche la valeur du courant
   Serial.print("Valeur du Courant Crête : ");
-  Serial.print(SCT013.GetCourantCrete());
+  Serial.print(mesure.crete);
   Serial.println(" A");
   Serial.print("Valeur du Courant Efficace : ");
-  Serial.print(SCT013.GetCourantEff());
+  Serial.print(mesure.efficace);
   Serial.println(" A");
-  Serial.print("Valeur de la Puissance : ");
-  Serial.print(SCT013.GetPuissanceApparente(230));
+  Serial.print("Valeur de la Puissance Apparente : ");
+  Serial.print(puissanceApparente);
+  Serial.println(" VA");
+  Serial.print("Valeur de la Puissance Active (estimée, cosphi=0.93) : ");
+  Serial.print(puissanceActive);
   Serial.println(" W");
 
   Serial.println("-----------------");
